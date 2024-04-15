@@ -16,7 +16,6 @@ function BackgroundC() {
       />
       <div className="text-overlay">
        
-<h1 style={{fontWeight:"bold",fontSize:"50px",background:"radial-gradient(black, transparent)",color:"white"}}>Mask R-CNN (Region-based Convolutional Neural Network) is a powerful deep learning model commonly used for object detection and instance segmentation tasks.</h1>
       </div>
     </div>
   )

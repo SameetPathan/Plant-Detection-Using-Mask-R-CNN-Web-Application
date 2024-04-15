@@ -4,33 +4,39 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUpload } from '@fortawesome/free-solid-svg-icons';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL,listAll  } from 'firebase/storage';
 import { app } from '../firebaseConfig';
+import { toast } from 'react-toastify';
 
 function Home(props) {
   const [fileUrl, setFileUrl] = useState(null);
   const [uploadedImage, setUploadedImage] = useState(null);
   const [imageUrls, setImageUrls] = useState([]);
-  const [apiResponse, setapiResponse] = useState(null);
+  const [apiResponse, setapiResponse] = useState(false);
+  const [visibleButton, setvisibleButton] = useState(false);
+
+  const fetchImageUrls = async () => {
+    const storage = getStorage(app);
+    const storageRefPath = 'PlantDetectionMRCNN/output';
+    const imagesRef = storageRef(storage, storageRefPath);
+
+    try {
+      const result = await listAll(imagesRef);
+      const urls = await Promise.all(result.items.map(async (itemRef) => {
+        return await getDownloadURL(itemRef);
+      }));
+      setImageUrls(urls);
+      setapiResponse(true)
+    } catch (error) {
+      console.error('Error fetching images:', error);
+    }
+  };
+
+
   useEffect(() => {
-    const fetchImageUrls = async () => {
-      const storage = getStorage(app);
-      const storageRefPath = 'PlantDetectionMRCNN/output';
-      const imagesRef = storageRef(storage, storageRefPath);
-
-      try {
-        const result = await listAll(imagesRef);
-        const urls = await Promise.all(result.items.map(async (itemRef) => {
-          return await getDownloadURL(itemRef);
-        }));
-        setImageUrls(urls);
-      } catch (error) {
-        console.error('Error fetching images:', error);
-      }
-    };
-
     fetchImageUrls();
   }, []);
 
   const handleFileUpload = async (file) => {
+    setvisibleButton(false)
     const storage = getStorage(app);
     const storageRefPath = `PlantDetectionMRCNN/inputPlantImage`;
     const fileRef = storageRef(storage, storageRefPath);
@@ -40,6 +46,11 @@ function Home(props) {
       const downloadUrl = await getDownloadURL(fileRef);
       setFileUrl(downloadUrl);
       setUploadedImage(URL.createObjectURL(file)); 
+      toast.success("Modal Running Please click on run detection after 10 seconds..");
+      
+      setTimeout(() => {
+        setvisibleButton(true);
+      }, 10000);
     } catch (error) {
       console.error('Error uploading file:', error);
     }
@@ -54,23 +65,8 @@ function Home(props) {
     }
   };
 
-  const calldetectionAPI= async () => {
-    try {
-      const response = await fetch('http://localhost:5000/your-flask-endpoint', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({}),
-      });
-      const data = await response.json();
-      console.log(data);
-      setapiResponse(data);
-    } catch (error) {
-      console.error('Error calling Flask API:', error);
-      setapiResponse(null);
-    }
-  };
+
+  
 
   return (
     <div style={{marginTop:"20px",marginBottom:"88px"}}>
@@ -86,10 +82,10 @@ function Home(props) {
           </div>
         </Col>
         <Col xs="12" md="6">
-          {fileUrl && (
-            <Button color="primary" onClick={calldetectionAPI}>
+          {fileUrl && visibleButton && (
+            <Button color="primary" onClick={fetchImageUrls}>
               <FontAwesomeIcon icon={faUpload} className="mr-2" />
-              Run Detection
+              Show Detection
             </Button>
           )}
         </Col>
@@ -105,7 +101,7 @@ function Home(props) {
         </Row>
       )}
 
-      {apiResponse && (
+   {apiResponse && fileUrl && visibleButton && (
       <Row className="mt-5">
       <Col>
       <div className="alert alert-primary" role="alert">
@@ -113,12 +109,13 @@ function Home(props) {
     </div>
         <div>
           {imageUrls.map((url, index) => (
-            <img key={index} src={url} alt={`Image ${index}`} style={{ maxWidth: '45%', height: 'auto' }} />
+            <img key={index} src={url} alt={`Image ${index}`} style={{ maxWidth: '50%', height: 'auto' }} />
           ))}
         </div>
       </Col>
     </Row>
-  )}
+   ) }
+  
       
       
     </Container>
